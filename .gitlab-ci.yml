@@ -1,0 +1,12 @@
+image: cr.yandex/crp742p3qacifd2hcon2/practice-da:latest
+
+stages:
+    - init
+    - run
+
+report_feed_job:
+    stage: run
+    only: 
+        -  schedules
+    script: 
+        -  notebook report_analitik.ipynb
