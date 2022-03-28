@@ -71,7 +71,7 @@ table = ax.table(
     rowColours =["steelblue"] * 10,  
     colColours =["steelblue"] * 10, 
     cellLoc ='center',  
-    loc ='upper left') 
+    loc ='center') 
 #настройка размера ячеек
 ax.axis("off") 
 table.auto_set_font_size(False)
