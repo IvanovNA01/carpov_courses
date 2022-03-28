@@ -56,7 +56,7 @@ row_Labels = ['yesterday','1 day ago','1 week ago']
 # send message to telegram
 message = 'Отчет за {v0} по значениям продуктовых метрик: \nDAU, likes, views, CTR. \nТакже добавлены данные на день и неделю раньше, в процентном отношении от вчерашней даты.'\
         .format(v0 = value_metrics[0][0])
-message = message + '\nСсылка на основной <a href=\"https://superset.lab.karpov.courses/superset/dashboard/327/\">дашборд!</a>'
+message = message + '\nСсылка на основные дашборды: \n<a href=\"https://superset.lab.karpov.courses/superset/dashboard/327/\">Лента новостей история</a>, \n<a href=\"https://superset.lab.karpov.courses/superset/dashboard/474/\">Лента новостей оперативный</a>. '
 bot.sendMessage(chat_id=chat_id, text=message, parse_mode = 'HTML')
 
 sns.set(rc={'figure.figsize':(10,8), 'axes.titlesize':16, 'axes.labelsize':14, 'xtick.labelsize':12, 'ytick.labelsize':12,'axes.titlepad': 30 })
@@ -99,8 +99,8 @@ number=0
 for i in range(0,len(axs)):
     for j in range(0,len(axs)):
         number+=1
-        axs[i, j].plot('date', name_metrics[number], data = report_metrics)
-        axs[i, j].set_title('{v}'.format(v=name_metrics[number]))
+        axs[i, j].plot('date', name_metrics[number-1], data = report_metrics)
+        axs[i, j].set_title('{v}'.format(v=name_metrics[number-1]))
         
 plot_object = io.BytesIO()
 plt.savefig(plot_object)
