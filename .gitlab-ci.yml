@@ -9,4 +9,5 @@ report_feed_job:
     only: 
         -  schedules
     script: 
-        -  notebook report_analitik.ipynb
+        -  python feed_report.py
+        -  python feed_mess_report.py
