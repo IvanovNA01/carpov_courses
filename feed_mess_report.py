@@ -18,7 +18,7 @@ connection = {
     'database': 'simulator_20220220'
 }
 
-bot = telegram.Bot(token = '5291500178:AAFQqAVPSG4ad90QdyE-IaZH-Ai8ow2oxFs')
+bot = telegram.Bot(token=os.environ.get("report_bot_token"))
 #updates = bot.getUpdates()
 #print(updates[-1])
 
