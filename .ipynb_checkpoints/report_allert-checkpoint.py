@@ -16,22 +16,23 @@ connection = {
     'database': 'simulator_20220220'
 }
 
-def check_anomaly(df_metric, metric, a=4, n=5):
+
+def check_anomaly(df_metric, metric, a=3.5, n=4):
     # функция check_anomaly предлагает алгоритм проверки значения на аномальность посредством
     # межквартильного размаха  IQR
-    #shift(1) - сдвигаем массив на 1 вперед, в итоге рассчет ведется не включая последнего значения (оно мб дефектным)
-    df_metric['q25'] = df_metric.metric.shift(1).rolling(n).quantile(0.25)
-    df_metric['q75'] = df_metric.metric.shift(1).rolling(n).quantile(0.75)
-    df_metric['IQR'] =  df_metric['q75'] - df_metric['q25']
+    # shift(1) - сдвигаем массив на 1 вперед, в итоге рассчет ведется не включая последнего значения (оно мб дефектным)
+    df_metric['q25'] = df_metric[metric].shift(1).rolling(n).quantile(0.25)
+    df_metric['q75'] = df_metric[metric].shift(1).rolling(n).quantile(0.75)
+    df_metric['IQR'] = df_metric['q75'] - df_metric['q25']
     df_metric['up_border'] = df_metric['q25']-a*df_metric['IQR']
     df_metric['low_border'] = df_metric['q75']+a*df_metric['IQR']
-    
-    df_metric['up_border'] = df_metric['up_border'].rolling(n, center = True, min_periods = 1)
-    df_metric['low_border'] = df_metric['low_border'].rolling(n, center = True, min_periods = 1)
-    
+
+    df_metric['up_border'] = df_metric['up_border'].rolling(n, center=True, min_periods=1).mean()
+    df_metric['low_border'] = df_metric['low_border'].rolling(n, center=True, min_periods=1).mean()
+
     # проверяем больше ли отклонение метрики заданного порога threshold
     # если отклонение больше, то вернем 1, в противном случае 0
-    if df_metric.metric.iloc[-1] > df_metric['up_border'].iloc[-1] or df_metric.metric.iloc[-1] < df_metric['low_border'].iloc[-1]
+    if df_metric[metric].iloc[-1] > df_metric['up_border'].iloc[-1] or df_metric[metric].iloc[-1] < df_metric['low_border'].iloc[-1]:
         is_alert = 1
     else:
         is_alert = 0
@@ -44,7 +45,7 @@ def run_alerts(chat=None):
     bot = telegram.Bot(token='5291500178:AAFQqAVPSG4ad90QdyE-IaZH-Ai8ow2oxFs')
     #bot = telegram.Bot(token=os.environ.get("report_bot_token"))
     # для удобства построения графиков в запрос можно добавить колонки date, hm
-    q =  ''' select 
+    q = ''' select 
                         Full_time, date, Hour_min,
                         sum(activ_feed_users) as activ_feed_users,
                         sum(likes) as likes,
@@ -106,34 +107,40 @@ def run_alerts(chat=None):
                     group by Full_time, date, Hour_min
                     order by Full_time '''
     df_allert = pandahouse.read_clickhouse(q, connection=connection)
-    df_allert['CTR'] = round(df_allert.likes*100/df_allert.views,2)
-    
-    for metric in df_allert.iloc[:, 3:].columns:
-        df_metric =   df_allert[['Full_time', 'date', 'Hour_min', metric]].copy()   
-        is_alert, df_metric = check_anomaly(df_metric, metric) # проверяем метрику на аномальность алгоритмом, описаным внутри функции check_anomaly()
-        
-        if is_alert = 1:
-            msg = '''Метрика {metric}:\nтекущее значение = {current_value:.2f}\nотклонение от вчера {diff:.2%}'''\
-                    .format(metric=metric, current_value=df_metric.metric.iloc[-1], diff = df_metric.metric.iloc[-2])
-                                                                                                                         
+    df_allert['CTR'] = round(df_allert.likes*100/df_allert.views, 2)
 
-            sns.set(rc={'figure.figsize': (16, 10)}) # задаем размер графика
+    for metric in df_allert.iloc[:, 3:].columns:
+        df_metric = df_allert[['Full_time', 'date', 'Hour_min', metric]].copy()
+        # проверяем метрику на аномальность алгоритмом, описаным внутри функции check_anomaly()
+        is_alert, df_metric = check_anomaly(df_metric, metric)
+
+        if is_alert:
+            msg = '''Метрика {metric}:\nтекущее значение = {current_value:.2f}\nотклонение от вчера {diff:.2%}'''\
+                .format(metric=metric, 
+                        current_value=df_metric[metric].iloc[-1], 
+                        diff=1-df_metric[metric].iloc[-1]/df_metric[metric].iloc[-2])
+
+            sns.set(rc={'figure.figsize': (16, 10)})  # задаем размер графика
             plt.tight_layout()
 
-            ax = sns.lineplot(data = df_metric, x = 'Full_time', y = metric, label = 'metric')
-            ax = sns.lineplot(data = df_metric, x = 'Full_time', y = 'up_border', label = 'up_border')
-            ax = sns.lineplot(data = df_metric, x = 'Full_time', y = 'low_border', label = 'low_border')
+            ax = sns.lineplot(data=df_metric, x='Full_time',
+                              y=metric, label='metric')
+            ax = sns.lineplot(data=df_metric, x='Full_time',
+                              y='up_border', label='up_border')
+            ax = sns.lineplot(data=df_metric, x='Full_time',
+                              y='low_border', label='low_border')
 
-            for ind, label in enumerate(ax.get_xticklabels()): # этот цикл нужен чтобы разрядить подписи координат по оси Х,
+            # этот цикл нужен чтобы разрядить подписи координат по оси Х,
+            for ind, label in enumerate(ax.get_xticklabels()):
                 if ind % 2 == 0:
                     label.set_visible(True)
                 else:
                     label.set_visible(False)
-            ax.set(xlabel='time') # задаем имя оси Х
-            ax.set(ylabel=metric) # задаем имя оси У
+            ax.set(xlabel='time')  # задаем имя оси Х
+            ax.set(ylabel=metric)  # задаем имя оси У
 
-            ax.set_title('{}'.format(metric)) # задае заголовок графика
-            ax.set(ylim=(0, None)) # задаем лимит для оси У
+            ax.set_title('{}'.format(metric))  # задае заголовок графика
+            ax.set(ylim=(0, None))  # задаем лимит для оси У
 
             # формируем файловый объект
             plot_object = io.BytesIO()
@@ -148,6 +155,6 @@ def run_alerts(chat=None):
 
 
 try:
-    run_alerts()
+    run_alerts(-1001795444673)
 except Exception as e:
     print(e)
