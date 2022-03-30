@@ -37,71 +37,19 @@ def check_anomaly(df, metric, threshold=0.3):
 
 
 def run_alerts(chat=None):
-    chat_id = chat or 1295860693
-    bot = telegram.Bot(token=os.environ.get("report_bot_token"))
+    chat_id = chat or 454623234
+    bot = telegram.Bot(token='1987162789:AAFgHNqBv-v5VXPQcS0btoxtXECUvw8akMs')
 
     # для удобства построения графиков в запрос можно добавить колонки date, hm
-    data = Getch(''' select 
-                        Full_time, date, Hour_min,
-                        sum(activ_feed_users) as activ_feed_users,
-                        sum(likes) as likes,
-                        sum(views) as views,
-                        sum(activ_mess_users) as activ_mess_users,
-                        sum(messages) as messages
-
-                    from
-                        (select 
-                            all_unique_users.Full_time as Full_time ,
-                            all_unique_users.date as date,
-                            all_unique_users.Hour_min as Hour_min,
-                            feed_table.activ_feed_users as activ_feed_users,
-                            feed_table.likes as likes,
-                            feed_table.views as views,
-                            likes*100/views as CTR,
-                            mess_table.activ_mess_users AS activ_mess_users,
-                            mess_table.messages as messages
-                        from
-                            (Select 
-                                toStartOfFifteenMinutes(time) as Full_time,
-                                toDate(Full_time) as date,
-                                formatDateTime(Full_time, '%R') as Hour_min,
-                                user_id
-                            from simulator_20220220.feed_actions
-                            group by Full_time, date, Hour_min, user_id
-                            union all
-                            Select 
-                                toStartOfFifteenMinutes(time) as Full_time,
-                                toDate(Full_time) as date,
-                                formatDateTime(Full_time, '%R') as Hour_min,
-                                user_id
-                            from simulator_20220220.message_actions
-                            group  by Full_time, date, Hour_min, user_id) as all_unique_users
-                        left join
-                            (select
-                                toStartOfFifteenMinutes(time) as Full_time,
-                                toDate(Full_time) as date,
-                                formatDateTime(Full_time, '%R') as Hour_min,
-                                user_id,
-                                count(distinct user_id) as activ_feed_users,
-                                countIf(user_id, action = 'like') as likes,
-                                countIf(user_id, action = 'view') as views
-                            from simulator_20220220.feed_actions
-                            group by Full_time, date, Hour_min, user_id) as feed_table 
-                        on all_unique_users.user_id = feed_table.user_id and all_unique_users.Full_time = feed_table.Full_time
-                        left join
-                            (select
-                                toStartOfFifteenMinutes(time) as Full_time,
-                                toDate(Full_time) as date,
-                                formatDateTime(Full_time, '%R') as Hour_min,
-                                user_id,
-                                count(distinct user_id) as activ_mess_users,
-                                count(user_id) as messages
-                            from simulator_20220220.message_actions
-                            group by Full_time, date, Hour_min, user_id) as mess_table
-                        on all_unique_users.user_id = mess_table.user_id and all_unique_users.Full_time = mess_table.Full_time
-                        where Full_time >=  today() - 1 and Full_time < toStartOfFifteenMinutes(now()) ) as virtual_table
-                    group by Full_time, date, Hour_min
-                    order by Full_time ''').df
+    data = Getch(''' SELECT
+                          toStartOfFifteenMinutes(time) as ts
+                        , toDate(ts) as date
+                        , formatDateTime(ts, '%R') as hm
+                        , uniqExact(user_id) as users_lenta
+                    FROM simulator.feed_actions
+                    WHERE ts >=  today() - 1 and ts < toStartOfFifteenMinutes(now())
+                    GROUP BY ts, date, hm
+                    ORDER BY ts ''').df
 
     metric = 'users_lenta'
     is_alert, current_value, diff = check_anomaly(data, metric, threshold=0.1) # проверяем метрику на аномальность алгоритмом, описаным внутри функции check_anomaly()
