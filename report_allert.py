@@ -114,7 +114,7 @@ def run_alerts(chat=None):
         # проверяем метрику на аномальность алгоритмом, описаным внутри функции check_anomaly()
         is_alert, df_metric = check_anomaly(df_metric, metric)
 
-        if is_alert:
+        if is_alert == 1:
             msg = '''Метрика {metric}:\nтекущее значение = {current_value:.2f}\nотклонение от вчера {diff:.2%}'''\
                 .format(metric=metric, 
                         current_value=df_metric[metric].iloc[-1], 
