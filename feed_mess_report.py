@@ -77,7 +77,7 @@ col_Labels = ['yesterday','1 day ago','1 week ago']
 message = 'Отчет за {v0} по значениям продуктовых метрик по ленте новостей и сообщениям. \nТакже добавлены данные на день и неделю раньше, в процентном отношении от вчерашней даты.'\
         .format(v0 = invers_report_metrics.values[0][0])
 message = message + '\nСсылка на основной дашборд <a href=\"https://superset.lab.karpov.courses/superset/dashboard/519/\">Лента новостей и сообщений</a>.'
-bot.sendMessage(chat_id=chat_id, text=message, parse_mode = 'HTML')
+bot.sendMessage(chat_id=chat_id, text=message, parse_mode = 'HTML') 
 
 sns.set(rc={'figure.figsize':(10,8), 'axes.titlesize':16, 'axes.labelsize':14, 'xtick.labelsize':12, 'ytick.labelsize':12,'axes.titlepad': 30 })
 #создаем таблицу
